@@ -11,8 +11,19 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   
   // Check if user is logged in
   const isAuthenticated = () => {
-    const user = localStorage.getItem("user");
-    return user ? JSON.parse(user).isLoggedIn : false;
+    // Check for currentUser in localStorage
+    const currentUser = localStorage.getItem("currentUser");
+    if (!currentUser) return false;
+    
+    try {
+      // Parse the user and check login status
+      const user = JSON.parse(currentUser);
+      return user.isLoggedIn === true;
+    } catch (error) {
+      // If there's an error parsing the user, consider not authenticated
+      console.error("Error parsing user data:", error);
+      return false;
+    }
   };
 
   useEffect(() => {

@@ -16,21 +16,36 @@ import { useToast } from "@/hooks/use-toast";
 const HeaderDropdown = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [user, setUser] = React.useState<{ name: string; isLoggedIn: boolean } | null>(null);
+  const [user, setUser] = React.useState<{ name: string; email: string; isLoggedIn: boolean } | null>(null);
 
   React.useEffect(() => {
     // Check for user in localStorage
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    const currentUser = localStorage.getItem("currentUser");
+    if (currentUser) {
+      try {
+        setUser(JSON.parse(currentUser));
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+      }
     }
   }, []);
 
   const handleLogout = () => {
-    // Update user login status
     if (user) {
+      // Get all users
+      const users = JSON.parse(localStorage.getItem("users") || "[]");
+      
+      // Update the current user's login status
+      const updatedUsers = users.map((u: any) => 
+        u.email === user.email ? { ...u, isLoggedIn: false } : u
+      );
+      
+      // Save updated users array
+      localStorage.setItem("users", JSON.stringify(updatedUsers));
+      
+      // Update current user
       const updatedUser = { ...user, isLoggedIn: false };
-      localStorage.setItem("user", JSON.stringify(updatedUser));
+      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
     }
     
     toast({

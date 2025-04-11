@@ -20,8 +20,14 @@ const queryClient = new QueryClient();
 const App = () => {
   // Check if user is logged in
   const isLoggedIn = () => {
-    const user = localStorage.getItem("user");
-    return user ? JSON.parse(user).isLoggedIn : false;
+    const currentUser = localStorage.getItem("currentUser");
+    if (!currentUser) return false;
+    
+    try {
+      return JSON.parse(currentUser).isLoggedIn === true;
+    } catch (error) {
+      return false;
+    }
   };
 
   return (

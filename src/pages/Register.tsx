@@ -25,6 +25,7 @@ const formSchema = z.object({
 const Register = () => {
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -39,22 +40,53 @@ const Register = () => {
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // In a real app, we would connect to a backend service
-    console.log(values);
+    setIsLoading(true);
     
-    // Store user in localStorage for demo purposes
-    localStorage.setItem("user", JSON.stringify({
+    // Get existing users from localStorage
+    const existingUsers = JSON.parse(localStorage.getItem("users") || "[]");
+    
+    // Check if user with this email already exists
+    const userExists = existingUsers.some((user: any) => user.email === values.email);
+    
+    if (userExists) {
+      toast({
+        title: "Registration failed",
+        description: "An account with this email already exists",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+      return;
+    }
+    
+    // Create new user object
+    const newUser = {
+      id: Date.now().toString(),
       name: values.name,
       email: values.email,
-      isLoggedIn: true
-    }));
+      password: values.password, // In a real app, this would be hashed
+      isLoggedIn: true,
+      createdAt: new Date().toISOString()
+    };
+    
+    // Add new user to the array of users
+    const updatedUsers = [...existingUsers, newUser];
+    
+    // Save updated users array to localStorage
+    localStorage.setItem("users", JSON.stringify(updatedUsers));
+    
+    // Also store the current user separately for easy access
+    localStorage.setItem("currentUser", JSON.stringify(newUser));
     
     toast({
       title: "Registration successful",
       description: "Welcome to Her Cycle Diary!"
     });
     
-    navigate("/dashboard");
+    // Navigate to dashboard after successful registration
+    setTimeout(() => {
+      navigate("/dashboard");
+      setIsLoading(false);
+    }, 500);
   };
 
   return (
@@ -152,7 +184,9 @@ const Register = () => {
                   )}
                 />
                 
-                <Button type="submit" className="w-full">Create Account</Button>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Creating account..." : "Create Account"}
+                </Button>
               </form>
             </Form>
           </CardContent>

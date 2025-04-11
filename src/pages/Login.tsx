@@ -19,6 +19,7 @@ const formSchema = z.object({
 
 const Login = () => {
   const [showPassword, setShowPassword] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -31,19 +32,30 @@ const Login = () => {
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // In a real app, we would verify credentials with a backend
-    console.log(values);
+    setIsLoading(true);
     
-    // Check if user exists in localStorage (demo purpose only)
-    const storedUser = localStorage.getItem("user");
+    // Get all users from localStorage
+    const users = JSON.parse(localStorage.getItem("users") || "[]");
     
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      
-      if (user.email === values.email) {
+    // Find the user with matching email
+    const user = users.find((u: any) => u.email === values.email);
+    
+    if (user) {
+      // Check if password matches
+      if (user.password === values.password) {
         // Update login status
         user.isLoggedIn = true;
-        localStorage.setItem("user", JSON.stringify(user));
+        
+        // Update the user in the users array
+        const updatedUsers = users.map((u: any) => 
+          u.email === user.email ? user : u
+        );
+        
+        // Save the updated users array
+        localStorage.setItem("users", JSON.stringify(updatedUsers));
+        
+        // Also store the current user separately for easy access
+        localStorage.setItem("currentUser", JSON.stringify(user));
         
         toast({
           title: "Login successful",
@@ -54,17 +66,19 @@ const Login = () => {
       } else {
         toast({
           title: "Login failed",
-          description: "Invalid email or password",
+          description: "Invalid password",
           variant: "destructive"
         });
       }
     } else {
       toast({
         title: "Account not found",
-        description: "Please register for an account first",
+        description: "No account found with this email",
         variant: "destructive"
       });
     }
+    
+    setIsLoading(false);
   };
 
   return (
@@ -121,7 +135,9 @@ const Login = () => {
                   )}
                 />
                 
-                <Button type="submit" className="w-full">Log in</Button>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Logging in..." : "Log in"}
+                </Button>
               </form>
             </Form>
           </CardContent>
