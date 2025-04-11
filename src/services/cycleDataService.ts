@@ -36,14 +36,17 @@ export const loadUserData = async (userId: string): Promise<UserData> => {
     // If no localStorage data, try Supabase
     try {
       // Fetch user profile data
-      const profileResult = await supabase
+      const profileResponse = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
         
-      if (profileResult.error) throw profileResult.error;
-      const profileData = profileResult.data || null;
+      // Handle the profile response properly, using optional chaining to avoid errors
+      const profileData = profileResponse?.data || null;
+      const profileError = profileResponse?.error;
+      
+      if (profileError) throw profileError;
 
       // Fetch cycles
       const cyclesResponse = await supabase
@@ -51,8 +54,9 @@ export const loadUserData = async (userId: string): Promise<UserData> => {
         .select('*')
         .eq('user_id', userId);
         
-      if (cyclesResponse.error) throw cyclesResponse.error;
-      const cyclesData = cyclesResponse.data || [];
+      // Handle cycles response properly
+      if (cyclesResponse?.error) throw cyclesResponse.error;
+      const cyclesData = cyclesResponse?.data || [];
       
       // Sort cycles by start_date in descending order
       cyclesData.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
@@ -63,8 +67,9 @@ export const loadUserData = async (userId: string): Promise<UserData> => {
         .select('*')
         .eq('user_id', userId);
 
-      if (daysResponse.error) throw daysResponse.error;
-      const daysData = daysResponse.data || [];
+      // Handle days response properly
+      if (daysResponse?.error) throw daysResponse.error;
+      const daysData = daysResponse?.data || [];
 
       // Map data to our format
       const cycles = cyclesData.map((cycle) => {

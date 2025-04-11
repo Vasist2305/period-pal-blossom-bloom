@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
@@ -5,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 export const useAuth = () => {
   const [user, setUser] = useState(null);
   const [initialized, setInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,6 +24,7 @@ export const useAuth = () => {
         }
       } finally {
         setInitialized(true);
+        setIsLoading(false);
       }
     };
 
@@ -135,6 +138,7 @@ export const useAuth = () => {
     signIn, 
     signOut,
     initialized,
+    isLoading,
     devModeBypass
   };
 };
