@@ -1,173 +1,97 @@
 
 import React from 'react';
-import { format, addDays, differenceInDays } from 'date-fns';
-import { CalendarDays, Droplets, LineChart, CalendarClock } from 'lucide-react';
+import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { useCycleData } from '@/contexts/CycleContext';
-import { useNavigate } from 'react-router-dom';
-import Layout from '@/components/Layout';
+import { Calendar, Drop, ThermometerSun } from 'lucide-react';
+import { useCycleContext } from '@/contexts/CycleContext';
+import { format, addDays } from 'date-fns';
 
 const Home = () => {
-  const { 
-    userData, 
-    currentCycle, 
-    getOvulationDay, 
-    addCycle, 
-    isLoading 
-  } = useCycleData();
-  const navigate = useNavigate();
+  const { currentCycle, getPredictedPeriodDays, getFertileWindowDays, getOvulationDay } = useCycleContext();
   
   const today = new Date();
-
-  const calculateCycleDay = () => {
-    if (!currentCycle) return null;
-    
-    const startDate = new Date(currentCycle.startDate);
-    const dayOfCycle = differenceInDays(today, startDate) + 1;
-    
-    return dayOfCycle > 0 ? dayOfCycle : null;
-  };
+  const nextMonth = addDays(today, 30);
   
-  const calculateDaysUntilNextPeriod = () => {
-    if (!currentCycle) return null;
-    
-    const startDate = new Date(currentCycle.startDate);
-    const predictedNextPeriod = addDays(startDate, userData.averageCycleLength);
-    const daysUntil = differenceInDays(predictedNextPeriod, today);
-    
-    return daysUntil > 0 ? daysUntil : null;
-  };
-  
+  const periodDays = getPredictedPeriodDays(today, nextMonth);
+  const fertileWindowDays = getFertileWindowDays(today, nextMonth);
   const ovulationDay = currentCycle ? getOvulationDay(currentCycle.startDate) : null;
   
-  const calculateDaysUntilOvulation = () => {
-    if (!ovulationDay) return null;
-    
-    const daysUntil = differenceInDays(ovulationDay, today);
-    
-    return daysUntil > 0 ? daysUntil : null;
-  };
+  const nextPeriod = periodDays.length > 0 ? periodDays[0] : null;
+  const daysUntilNextPeriod = nextPeriod 
+    ? Math.ceil((nextPeriod.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) 
+    : null;
   
-  const calculateCycleProgress = () => {
-    if (!currentCycle) return 0;
-    
-    const startDate = new Date(currentCycle.startDate);
-    const dayOfCycle = differenceInDays(today, startDate) + 1;
-    const progressPercentage = Math.min(100, (dayOfCycle / userData.averageCycleLength) * 100);
-    
-    return Math.max(0, progressPercentage);
-  };
-  
-  const handleStartPeriod = () => {
-    addCycle(today);
-  };
+  const nextFertileDay = fertileWindowDays.length > 0 ? fertileWindowDays[0] : null;
+  const daysUntilFertile = nextFertileDay 
+    ? Math.ceil((nextFertileDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) 
+    : null;
 
   return (
     <Layout>
-      <div className="max-w-md mx-auto space-y-6">
-        <section className="text-center">
-          <h1 className="text-3xl font-bold text-primary mb-2">Her Cycle Diary</h1>
-          <p className="text-muted-foreground">
-            {isLoading ? "Loading your data..." : "Track your cycle, understand your body"}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Your data is saved locally in this browser
-          </p>
-        </section>
+      <div className="space-y-4 max-w-md mx-auto">
+        <h1 className="text-2xl font-bold text-center mt-4">Welcome to Her Cycle Diary</h1>
         
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Cycle Status</CardTitle>
-            <CardDescription>
-              {currentCycle 
-                ? `Current cycle started on ${format(new Date(currentCycle.startDate), 'MMMM d')}`
-                : "No active cycle"
-              }
-            </CardDescription>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Drop className="w-5 h-5 mr-2 text-primary" />
+              Period Prediction
+            </CardTitle>
+            <CardDescription>Your upcoming period</CardDescription>
           </CardHeader>
           <CardContent>
-            {currentCycle ? (
-              <>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span>Day {calculateCycleDay()} of {userData.averageCycleLength}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {calculateDaysUntilNextPeriod() !== null 
-                        ? `${calculateDaysUntilNextPeriod()} days until next period`
-                        : "Period expected soon"
-                      }
-                    </span>
-                  </div>
-                  <Progress value={calculateCycleProgress()} className="h-2" />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 mt-6">
-                  <div className="rounded-lg bg-muted p-3 flex items-center space-x-3">
-                    <Droplets className="h-5 w-5 text-primary" />
-                    <div>
-                      <p className="text-sm font-medium">Period Length</p>
-                      <p className="text-sm text-muted-foreground">
-                        {userData.averagePeriodLength} days
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="rounded-lg bg-muted p-3 flex items-center space-x-3">
-                    <CalendarClock className="h-5 w-5 text-lavender-500" />
-                    <div>
-                      <p className="text-sm font-medium">Ovulation</p>
-                      <p className="text-sm text-muted-foreground">
-                        {calculateDaysUntilOvulation() !== null 
-                          ? `In ${calculateDaysUntilOvulation()} days`
-                          : "Passed"
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-4">
-                <p className="mb-4">Track your period to see predictions and insights</p>
-                <Button onClick={handleStartPeriod}>Start Period Today</Button>
+            {nextPeriod ? (
+              <div>
+                <p className="text-lg font-medium">
+                  {daysUntilNextPeriod === 0 
+                    ? "Your period is predicted to start today" 
+                    : `Your next period is predicted to start in ${daysUntilNextPeriod} days`}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {format(nextPeriod, 'MMMM d, yyyy')}
+                </p>
               </div>
+            ) : (
+              <p>Start tracking your cycle to see period predictions</p>
             )}
           </CardContent>
         </Card>
         
-        <div className="grid grid-cols-2 gap-4">
-          <Button 
-            variant="outline" 
-            className="h-24 flex flex-col items-center justify-center gap-2"
-            onClick={() => navigate('/calendar')}
-          >
-            <CalendarDays className="h-6 w-6" />
-            <span>Calendar</span>
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className="h-24 flex flex-col items-center justify-center gap-2"
-            onClick={() => navigate('/stats')}
-          >
-            <LineChart className="h-6 w-6" />
-            <span>Statistics</span>
-          </Button>
-        </div>
-        
         <Card>
           <CardHeader>
-            <CardTitle>Today's Tip</CardTitle>
+            <CardTitle className="flex items-center">
+              <ThermometerSun className="w-5 h-5 mr-2 text-lavender-500" />
+              Fertility Window
+            </CardTitle>
+            <CardDescription>Your upcoming fertile days</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm">
-              Tracking your period regularly helps identify patterns and can improve predictions.
-              Make sure to log not just your period, but also symptoms and moods!
-            </p>
+            {nextFertileDay ? (
+              <div>
+                <p className="text-lg font-medium">
+                  {daysUntilFertile === 0 
+                    ? "Your fertile window starts today" 
+                    : daysUntilFertile < 0
+                      ? "You are currently in your fertile window"
+                      : `Your fertile window starts in ${daysUntilFertile} days`}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {format(nextFertileDay, 'MMMM d, yyyy')}
+                </p>
+              </div>
+            ) : (
+              <p>Start tracking your cycle to see fertility predictions</p>
+            )}
           </CardContent>
         </Card>
+        
+        <div className="mt-8 text-center">
+          <Button className="w-full" size="lg">
+            <Calendar className="w-4 h-4 mr-2" />
+            Track Today
+          </Button>
+        </div>
       </div>
     </Layout>
   );
