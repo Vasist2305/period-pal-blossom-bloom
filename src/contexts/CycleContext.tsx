@@ -2,7 +2,6 @@
 import React, { createContext, useContext } from 'react';
 import { Cycle, CycleDay, UserData } from '@/types';
 import { useCycleData } from '@/hooks/useCycleData';
-import { useCycleHelpers } from '@/hooks/useCycleHelpers';
 
 interface CycleContextType {
   userData: UserData;
@@ -32,47 +31,16 @@ interface CycleProviderProps {
 }
 
 export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
-  // Use the custom hook for data management
-  const { 
-    userData, 
-    isLoading, 
-    addCycle, 
-    updateCycleDay, 
-    resetData 
-  } = useCycleData();
+  const cycleData = useCycleData();
   
-  // Use the helper hook for cycle calculations
-  const { 
-    currentCycle, 
-    getCycleDay, 
-    getPredictedPeriodDays, 
-    getFertileWindowDays, 
-    getOvulationDay 
-  } = useCycleHelpers(
-    userData.cycles, 
-    userData.averageCycleLength, 
-    userData.averagePeriodLength
-  );
-
   return (
-    <CycleContext.Provider
-      value={{
-        userData,
-        currentCycle,
-        isLoading,
-        addCycle,
-        updateCycleDay,
-        getCycleDay,
-        getPredictedPeriodDays,
-        getFertileWindowDays,
-        getOvulationDay,
-        resetData
-      }}
-    >
+    <CycleContext.Provider value={cycleData}>
       {children}
     </CycleContext.Provider>
   );
 };
 
-// Export the consumer hook for backward compatibility
-export { useCycleContext as useCycleData };
+// Export the consumer hook for easy access
+export const useCycleData = () => {
+  return useCycleContext();
+};

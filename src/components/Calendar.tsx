@@ -105,13 +105,13 @@ const Calendar: React.FC<CalendarProps> = ({ onDateSelect }) => {
               key={day.toString()}
               onClick={() => onDateSelect(day)}
               className={cn(
-                "calendar-day",
+                "h-9 w-9 rounded-full flex items-center justify-center text-sm",
                 !isCurrentMonth && "text-muted-foreground opacity-40",
-                isPeriod && "period",
-                isPredictedPeriod && "period opacity-50",
-                isFertile && !isPeriod && !isPredictedPeriod && "fertile",
-                isOvulation && !isPeriod && !isPredictedPeriod && "ovulation",
-                isToday(day) && "today"
+                isPeriod && "bg-blossom-500 text-white",
+                isPredictedPeriod && "bg-blossom-500 bg-opacity-50 text-white",
+                isFertile && !isPeriod && !isPredictedPeriod && "bg-lavender-100",
+                isOvulation && !isPeriod && !isPredictedPeriod && "bg-lavender-400",
+                isToday(day) && "border-2 border-primary"
               )}
             >
               {format(day, 'd')}

@@ -1,10 +1,17 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Calendar, Heart, Activity } from 'lucide-react';
 
 const Home = () => {
+  const navigate = useNavigate();
+
+  const handleGetStarted = () => {
+    navigate('/login');
+  };
+
   return (
     <Layout>
       <div className="min-h-screen flex flex-col items-center justify-center text-center p-4 bg-background">
@@ -32,7 +39,7 @@ const Home = () => {
             </div>
           </div>
           
-          <Button size="lg" className="w-full">
+          <Button size="lg" className="w-full" onClick={handleGetStarted}>
             Get Started
           </Button>
           
