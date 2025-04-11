@@ -21,6 +21,7 @@ import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import PainReliefSuggestions from "@/components/PainReliefSuggestions";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -124,7 +125,7 @@ const Dashboard = () => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {features.map((feature, index) => (
             <Card key={index} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(feature.path)}>
               <CardHeader className="flex flex-row items-center gap-4">
@@ -144,6 +145,11 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           ))}
+        </div>
+        
+        {/* Food-based pain relief suggestions */}
+        <div className="mt-8">
+          <PainReliefSuggestions />
         </div>
       </div>
     </Layout>
