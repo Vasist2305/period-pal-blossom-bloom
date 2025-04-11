@@ -74,5 +74,5 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
   );
 };
 
-// Export the consumer hook with the original name for backward compatibility
-export const useCycleData = useCycleContext;
+// Export the consumer hook for backward compatibility
+export { useCycleContext as useCycleData };

@@ -1,22 +1,20 @@
-
 import { supabase } from '@/lib/supabase';
 import { Cycle, CycleDay, UserData, DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH } from '@/types';
 import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
-import { PostgrestResponse, PostgrestSingleResponse } from '@supabase/supabase-js';
 
 // Load user cycle data from Supabase
 export const loadUserData = async (userId: string): Promise<UserData> => {
   try {
     // Fetch user profile data
-    const profileResponse = await supabase
+    const profileResult = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
       
-    if (profileResponse.error) throw profileResponse.error;
-    const profileData = profileResponse.data || null;
+    if (profileResult.error) throw profileResult.error;
+    const profileData = profileResult.data || null;
 
     // Fetch cycles
     const cyclesResponse = await supabase
