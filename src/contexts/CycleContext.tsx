@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Cycle, CycleDay, UserData, DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH } from '@/types';
 import { isSameDay } from 'date-fns';
@@ -58,8 +57,8 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
+  const [dataError, setDataError] = useState<Error | null>(null);
 
-  // Load data from Supabase when user changes
   useEffect(() => {
     if (!user) {
       setUserData(initialUserData);
@@ -69,16 +68,23 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
 
     const fetchData = async () => {
       setIsLoading(true);
+      setDataError(null);
+      
       try {
         const data = await loadUserData(user.id);
         setUserData(data);
       } catch (error) {
         console.error('Error loading user data:', error);
-        toast({
-          title: "Error loading data",
-          description: "There was a problem loading your data",
-          variant: "destructive"
-        });
+        setDataError(error instanceof Error ? error : new Error('Unknown error loading data'));
+        
+        if (!import.meta.env.DEV || !(error instanceof Error && error.message.includes('supabase'))) {
+          toast({
+            title: "Error loading data",
+            description: "There was a problem loading your data. Using default data for now.",
+            variant: "destructive"
+          });
+        }
+        
         setUserData(initialUserData);
       } finally {
         setIsLoading(false);
@@ -88,44 +94,47 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
     fetchData();
   }, [user, toast]);
 
-  // Save data to Supabase whenever it changes
   useEffect(() => {
-    if (!user || isLoading) return;
+    if (!user || isLoading || dataError) return;
 
     const saveData = async () => {
       try {
-        // Update user profile
         await saveUserProfile(
           user.id, 
           userData.averageCycleLength, 
           userData.averagePeriodLength
         );
 
-        // For each cycle, update or insert
         for (const cycle of userData.cycles) {
           await saveCycle(user.id, cycle);
         }
       } catch (error) {
         console.error('Error saving user data:', error);
-        toast({
-          title: "Error saving data",
-          description: "There was a problem saving your data",
-          variant: "destructive"
-        });
+        
+        if (!import.meta.env.DEV || !(error instanceof Error && error.message.includes('supabase'))) {
+          toast({
+            title: "Error saving data",
+            description: "There was a problem saving your data",
+            variant: "destructive"
+          });
+        }
       }
     };
 
+    if (import.meta.env.DEV && dataError && dataError.message.includes('supabase')) {
+      console.info('Skipping data save in development mode with Supabase connection issues');
+      return;
+    }
+    
     saveData();
-  }, [userData, isLoading, user, toast]);
+  }, [userData, isLoading, user, toast, dataError]);
 
-  // Calculate and return the current cycle
   const currentCycle = userData.cycles.length > 0 
     ? userData.cycles.sort((a, b) => 
         new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
       )[0] 
     : null;
 
-  // Add a new cycle
   const addCycle = async (startDate: Date) => {
     if (!user) {
       toast({
@@ -138,7 +147,6 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
 
     const newCycle = createCycle(startDate);
     
-    // Calculate average cycle length from previous cycles
     const updatedCycles = [...userData.cycles, newCycle];
     const { averageCycleLength, averagePeriodLength } = calculateAverages(updatedCycles);
 
@@ -156,7 +164,6 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
     });
   };
 
-  // Update a specific cycle day
   const updateCycleDay = (date: Date, dayData: Partial<CycleDay>) => {
     if (!user) {
       toast({
@@ -167,18 +174,14 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
       return;
     }
 
-    // Check if the date falls within any existing cycle
     const targetCycleIndex = userData.cycles.findIndex(cycle => {
-      // If cycle has an end date, check if date is within range
       if (cycle.endDate) {
         return date >= cycle.startDate && date <= cycle.endDate;
       }
-      // If no end date, check if date is after start date
       return date >= cycle.startDate;
     });
 
     if (targetCycleIndex === -1) {
-      // If not found in any cycle, create a new cycle
       if (dayData.menstruation) {
         addCycle(date);
       } else {
@@ -191,24 +194,20 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
       return;
     }
 
-    // Update the cycle
     setUserData(prev => {
       const updatedCycles = [...prev.cycles];
       const targetCycle = { ...updatedCycles[targetCycleIndex] };
       
-      // Find existing day or create new one
       const existingDayIndex = targetCycle.days.findIndex(day => 
         isSameDay(new Date(day.date), date)
       );
       
       if (existingDayIndex >= 0) {
-        // Update existing day
         targetCycle.days[existingDayIndex] = {
           ...targetCycle.days[existingDayIndex],
           ...dayData
         };
       } else {
-        // Add new day
         targetCycle.days.push({
           date,
           menstruation: false,
@@ -216,18 +215,15 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
         });
       }
       
-      // Sort days by date
       targetCycle.days.sort((a, b) => 
         new Date(a.date).getTime() - new Date(b.date).getTime()
       );
       
-      // Recalculate period length if menstruation status changed
       if (dayData.menstruation !== undefined) {
         const periodDays = targetCycle.days.filter(day => day.menstruation);
         targetCycle.periodLength = periodDays.length;
       }
       
-      // Update cycle end date if needed
       if (targetCycle.days.length > 0) {
         const lastDay = targetCycle.days[targetCycle.days.length - 1];
         if (!targetCycle.endDate || lastDay.date > targetCycle.endDate) {
@@ -245,12 +241,10 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
     });
   };
 
-  // Get a specific cycle day
   const getCycleDay = (date: Date): CycleDay | null => {
     return findCycleDay(date, userData.cycles);
   };
 
-  // Get predicted period days
   const getPredictedPeriodDays = (startDate: Date, endDate: Date): Date[] => {
     return calculatePredictedPeriodDays(
       startDate, 
@@ -261,7 +255,6 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
     );
   };
 
-  // Get fertile window days
   const getFertileWindowDays = (startDate: Date, endDate: Date): Date[] => {
     return calculateFertileWindowDays(
       startDate, 
@@ -271,19 +264,16 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
     );
   };
 
-  // Get ovulation day
   const getOvulationDay = (cycleStartDate: Date): Date | null => {
     return calculateOvulationDay(cycleStartDate, userData.averageCycleLength);
   };
 
-  // Reset all data
   const resetData = async () => {
     if (!user) return;
 
     try {
       await deleteUserData(user.id);
       
-      // Reset local state
       setUserData(initialUserData);
       
       toast({
