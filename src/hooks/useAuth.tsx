@@ -13,15 +13,16 @@ export const useAuth = () => {
     // Check current session
     const checkUser = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setUser(session?.user ?? null);
+        setIsLoading(true);
+        // In our offline-first approach, we'll rely on localStorage
+        const localUser = localStorage.getItem('local_user_id');
+        if (localUser) {
+          console.log('Using local user ID:', localUser);
+        }
+        // We don't actually set the user state here since we're working offline
+        setUser(null);
       } catch (error) {
         console.error('Auth initialization error:', error);
-        // In development, provide a mock user experience
-        if (import.meta.env.DEV) {
-          console.info('🧪 Using mock user in development mode');
-          // No user is set, keeping it as null
-        }
       } finally {
         setInitialized(true);
         setIsLoading(false);
@@ -29,108 +30,50 @@ export const useAuth = () => {
     };
 
     checkUser();
-
-    // Listen to auth state changes
-    let subscription;
-    try {
-      const { data } = supabase.auth.onAuthStateChange(
-        (event, session) => {
-          setUser(session?.user ?? null);
-        }
-      );
-      subscription = data.subscription;
-    } catch (error) {
-      console.error('Auth subscription error:', error);
-    }
-
-    // Cleanup subscription
-    return () => {
-      if (subscription) {
-        try {
-          subscription.unsubscribe();
-        } catch (error) {
-          console.error('Error unsubscribing from auth:', error);
-        }
-      }
-    };
   }, []);
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name
-          }
-        }
-      });
-
-      if (error) throw error;
-      return data;
+      // In offline mode, just create a local user ID
+      const localUserId = 'local_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('local_user_id', localUserId);
+      console.log('Created local user ID:', localUserId);
+      
+      return { user: { id: localUserId, email, user_metadata: { name } } };
     } catch (error) {
-      // In development mode with no Supabase, provide a mock successful response
-      if (import.meta.env.DEV && error.message && error.message.includes('Mock: Auth not configured')) {
-        console.info('🧪 Using mock signup in development mode');
-        setUser({
-          id: 'mock-user-id',
-          email: email,
-          user_metadata: { name }
-        });
-        return { user: { id: 'mock-user-id', email, user_metadata: { name } } };
-      }
+      console.error('Sign up error:', error);
       throw error;
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      // In development mode with no Supabase, provide a mock successful response
-      if (import.meta.env.DEV && error.message && error.message.includes('Mock: Auth not configured')) {
-        console.info('🧪 Using mock signin in development mode');
-        const mockUser = {
-          id: 'mock-user-id',
-          email: email,
-          user_metadata: { name: email.split('@')[0] }
-        };
-        setUser(mockUser);
-        return { user: mockUser };
+      // In offline mode, just create a local user ID if it doesn't exist
+      let localUserId = localStorage.getItem('local_user_id');
+      if (!localUserId) {
+        localUserId = 'local_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('local_user_id', localUserId);
       }
+      console.log('Using local user ID:', localUserId);
+      
+      return { user: { id: localUserId, email, user_metadata: { name: email.split('@')[0] } } };
+    } catch (error) {
+      console.error('Sign in error:', error);
       throw error;
     }
   };
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      // Always clear the user state even if there's an error
+      // In offline mode, just clear the local user ID
+      localStorage.removeItem('local_user_id');
       setUser(null);
       navigate('/login');
     } catch (error) {
       console.error('Sign out error:', error);
-      // In development without Supabase, still allow sign out
-      if (import.meta.env.DEV) {
-        setUser(null);
-        navigate('/login');
-      } else {
-        throw error;
-      }
+      throw error;
     }
   };
-
-  // Development mode bypass for ProtectedRoute
-  const devModeBypass = import.meta.env.DEV && !initialized;
 
   return { 
     user, 
@@ -139,6 +82,6 @@ export const useAuth = () => {
     signOut,
     initialized,
     isLoading,
-    devModeBypass
+    devModeBypass: false
   };
 };

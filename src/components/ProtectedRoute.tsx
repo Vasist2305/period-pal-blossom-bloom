@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   
   // Check if we have a local user ID
   const hasLocalUserId = localStorage.getItem('local_user_id') !== null;
@@ -17,8 +17,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
   
-  // If user is authenticated or we have a local user ID, allow access
-  if (user || hasLocalUserId) {
+  // If we have a local user ID, allow access
+  if (hasLocalUserId) {
     return <>{children}</>;
   }
   
