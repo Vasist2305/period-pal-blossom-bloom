@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
 import { Cycle, CycleDay, UserData, DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH } from '@/types';
@@ -36,40 +35,32 @@ export const loadUserData = async (userId: string): Promise<UserData> => {
     // If no localStorage data, try Supabase
     try {
       // Fetch user profile data
-      const profileResponse = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
         
-      // Handle the profile response properly, using optional chaining to avoid errors
-      const profileData = profileResponse?.data || null;
-      const profileError = profileResponse?.error;
-      
       if (profileError) throw profileError;
 
       // Fetch cycles
-      const cyclesResponse = await supabase
+      const { data: cyclesData = [], error: cyclesError } = await supabase
         .from('cycles')
         .select('*')
         .eq('user_id', userId);
         
-      // Handle cycles response properly
-      if (cyclesResponse?.error) throw cyclesResponse.error;
-      const cyclesData = cyclesResponse?.data || [];
+      if (cyclesError) throw cyclesError;
       
       // Sort cycles by start_date in descending order
       cyclesData.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
 
       // Fetch cycle days
-      const daysResponse = await supabase
+      const { data: daysData = [], error: daysError } = await supabase
         .from('cycle_days')
         .select('*')
         .eq('user_id', userId);
 
-      // Handle days response properly
-      if (daysResponse?.error) throw daysResponse.error;
-      const daysData = daysResponse?.data || [];
+      if (daysError) throw daysError;
 
       // Map data to our format
       const cycles = cyclesData.map((cycle) => {
