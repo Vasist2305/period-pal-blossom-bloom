@@ -2,6 +2,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { CalendarDays, LineChart, Settings, Home } from 'lucide-react';
+import HeaderDropdown from './HeaderDropdown';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,10 +12,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="py-4 px-6 bg-white border-b border-border">
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-between max-w-6xl mx-auto w-full">
           <h1 className="text-2xl font-bold text-primary">
             Her Cycle Diary
           </h1>
+          <HeaderDropdown />
         </div>
       </header>
       
@@ -85,4 +87,3 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 };
 
 export default Layout;
-
