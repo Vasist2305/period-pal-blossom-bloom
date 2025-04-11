@@ -13,7 +13,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <header className="py-4 px-6 bg-white border-b border-border">
         <div className="flex items-center justify-center">
           <h1 className="text-2xl font-bold text-primary">
-            Blossom & Bloom
+            Her Cycle Diary
           </h1>
         </div>
       </header>
@@ -85,3 +85,4 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 };
 
 export default Layout;
+

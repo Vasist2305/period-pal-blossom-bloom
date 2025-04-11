@@ -24,7 +24,7 @@ const SettingsPage = () => {
           <CardContent className="space-y-4">
             <div>
               <Label className="text-muted-foreground">App Name</Label>
-              <p>Blossom & Bloom</p>
+              <p>Her Cycle Diary</p>
             </div>
             <div>
               <Label className="text-muted-foreground">Version</Label>
@@ -96,13 +96,13 @@ const SettingsPage = () => {
           </CardHeader>
           <CardContent>
             <p className="text-sm">
-              Blossom & Bloom helps you track your menstrual cycle, predict upcoming periods, 
+              Her Cycle Diary helps you track your menstrual cycle, predict upcoming periods, 
               and track symptoms over time. This app stores data locally on your device.
             </p>
           </CardContent>
           <CardFooter className="flex justify-center border-t pt-6">
             <p className="text-xs text-muted-foreground">
-              &copy; 2025 Blossom & Bloom
+              &copy; 2025 Her Cycle Diary
             </p>
           </CardFooter>
         </Card>
@@ -112,3 +112,4 @@ const SettingsPage = () => {
 };
 
 export default SettingsPage;
+

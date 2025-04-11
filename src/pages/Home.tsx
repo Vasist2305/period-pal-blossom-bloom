@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { CalendarDays, Droplets, LineChart, CalendarClock } from 'lucide-react';
@@ -21,7 +20,6 @@ const Home = () => {
   
   const today = new Date();
 
-  // Calculate the day of cycle
   const calculateCycleDay = () => {
     if (!currentCycle) return null;
     
@@ -31,7 +29,6 @@ const Home = () => {
     return dayOfCycle > 0 ? dayOfCycle : null;
   };
   
-  // Calculate days until next period
   const calculateDaysUntilNextPeriod = () => {
     if (!currentCycle) return null;
     
@@ -42,10 +39,8 @@ const Home = () => {
     return daysUntil > 0 ? daysUntil : null;
   };
   
-  // Get ovulation day
   const ovulationDay = currentCycle ? getOvulationDay(currentCycle.startDate) : null;
   
-  // Calculate days until ovulation
   const calculateDaysUntilOvulation = () => {
     if (!ovulationDay) return null;
     
@@ -54,7 +49,6 @@ const Home = () => {
     return daysUntil > 0 ? daysUntil : null;
   };
   
-  // Calculate the cycle progress
   const calculateCycleProgress = () => {
     if (!currentCycle) return 0;
     
@@ -65,7 +59,6 @@ const Home = () => {
     return Math.max(0, progressPercentage);
   };
   
-  // Handle starting a new period
   const handleStartPeriod = () => {
     addCycle(today);
   };
@@ -74,13 +67,12 @@ const Home = () => {
     <Layout>
       <div className="max-w-md mx-auto space-y-6">
         <section className="text-center">
-          <h1 className="text-3xl font-bold text-primary mb-2">Blossom & Bloom</h1>
+          <h1 className="text-3xl font-bold text-primary mb-2">Her Cycle Diary</h1>
           <p className="text-muted-foreground">
             {isLoading ? "Loading your data..." : "Track your cycle, understand your body"}
           </p>
         </section>
         
-        {/* Cycle Status */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle>Cycle Status</CardTitle>
@@ -141,7 +133,6 @@ const Home = () => {
           </CardContent>
         </Card>
         
-        {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-4">
           <Button 
             variant="outline" 
@@ -162,7 +153,6 @@ const Home = () => {
           </Button>
         </div>
         
-        {/* Tips */}
         <Card>
           <CardHeader>
             <CardTitle>Today's Tip</CardTitle>
