@@ -11,10 +11,11 @@ export const loadUserData = async (userId: string): Promise<UserData> => {
     const profileResponse = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', userId);
+      .eq('id', userId)
+      .single();
       
     if (profileResponse.error) throw profileResponse.error;
-    const profileData = profileResponse.data?.[0] || null;
+    const profileData = profileResponse.data || null;
 
     // Fetch cycles
     const cyclesResponse = await supabase
@@ -152,19 +153,19 @@ export const saveCycleDay = async (userId: string, cycleId: string, day: CycleDa
 // Delete all user data from Supabase
 export const deleteUserData = async (userId: string) => {
   try {
-    const daysResponse = await supabase
+    const { error: daysError } = await supabase
       .from('cycle_days')
       .delete()
       .eq('user_id', userId);
       
-    if (daysResponse.error) throw daysResponse.error;
+    if (daysError) throw daysError;
     
-    const cyclesResponse = await supabase
+    const { error: cyclesError } = await supabase
       .from('cycles')
       .delete()
       .eq('user_id', userId);
       
-    if (cyclesResponse.error) throw cyclesResponse.error;
+    if (cyclesError) throw cyclesError;
     
     return { success: true };
   } catch (error) {

@@ -2,21 +2,16 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Get these from Supabase project settings
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project-url.supabase.co';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ndmgtptpgfhmutiwkurt.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
 
 // Check if we have the required values
-if (!supabaseUrl || supabaseUrl === 'https://your-project-url.supabase.co') {
-  console.warn('⚠️ Supabase URL not set! Please set VITE_SUPABASE_URL environment variable.');
-}
-
 if (!supabaseAnonKey || supabaseAnonKey === 'your-anon-key') {
   console.warn('⚠️ Supabase Anon Key not set! Please set VITE_SUPABASE_ANON_KEY environment variable.');
 }
 
 // Use mock client when in development and missing real credentials
 const isMissingCredentials = 
-  (!supabaseUrl || supabaseUrl === 'https://your-project-url.supabase.co') ||
   (!supabaseAnonKey || supabaseAnonKey === 'your-anon-key');
 
 // For development, use a mock client when credentials are missing
@@ -41,9 +36,6 @@ function createMockClient() {
       select: () => ({
         eq: (column: string, value: any) => ({
           single: () => Promise.resolve({ data: null, error: null }),
-          order: (column: string, options: any) => ({
-            eq: (column: string, value: any) => Promise.resolve({ data: [], error: null }),
-          }),
         }),
         order: (column: string, options: any) => ({
           eq: (column: string, value: any) => Promise.resolve({ data: [], error: null }),
