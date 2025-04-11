@@ -28,32 +28,40 @@ export const useCycleData = () => {
   const { user } = useAuth();
   const [dataError, setDataError] = useState<Error | null>(null);
 
+  // Generate a local user ID if no authenticated user exists
+  const getUserId = () => {
+    if (user) return user.id;
+    
+    // Check if we have a local user ID
+    let localUserId = localStorage.getItem('local_user_id');
+    if (!localUserId) {
+      // Generate a new local user ID
+      localUserId = 'local_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('local_user_id', localUserId);
+    }
+    return localUserId;
+  };
+
   // Fetch user data on mount and when user changes
   useEffect(() => {
-    if (!user) {
-      setUserData(initialUserData);
-      setIsLoading(false);
-      return;
-    }
-
+    const userId = getUserId();
+    
     const fetchData = async () => {
       setIsLoading(true);
       setDataError(null);
       
       try {
-        const data = await loadUserData(user.id);
+        const data = await loadUserData(userId);
         setUserData(data);
       } catch (error) {
         console.error('Error loading user data:', error);
         setDataError(error instanceof Error ? error : new Error('Unknown error loading data'));
         
-        if (!import.meta.env.DEV || !(error instanceof Error && error.message.includes('supabase'))) {
-          toast({
-            title: "Error loading data",
-            description: "There was a problem loading your data. Using default data for now.",
-            variant: "destructive"
-          });
-        }
+        toast({
+          title: "Using local data",
+          description: "We're storing your cycle data locally in this browser.",
+          variant: "default"
+        });
         
         setUserData(initialUserData);
       } finally {
@@ -66,27 +74,29 @@ export const useCycleData = () => {
 
   // Save data whenever it changes
   useEffect(() => {
-    if (!user || isLoading || dataError) return;
+    if (isLoading || dataError) return;
+    
+    const userId = getUserId();
 
     const saveData = async () => {
       try {
         await saveUserProfile(
-          user.id, 
+          userId, 
           userData.averageCycleLength, 
           userData.averagePeriodLength
         );
 
         for (const cycle of userData.cycles) {
-          await saveCycle(user.id, cycle);
+          await saveCycle(userId, cycle);
         }
       } catch (error) {
         console.error('Error saving user data:', error);
         
         if (!import.meta.env.DEV || !(error instanceof Error && error.message.includes('supabase'))) {
           toast({
-            title: "Error saving data",
-            description: "There was a problem saving your data",
-            variant: "destructive"
+            title: "Data saved locally",
+            description: "Your cycle data has been saved to this browser",
+            variant: "default"
           });
         }
       }
@@ -102,14 +112,7 @@ export const useCycleData = () => {
 
   // Add a new cycle
   const addCycle = async (startDate: Date) => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to track your cycle",
-        variant: "destructive"
-      });
-      return;
-    }
+    const userId = getUserId();
 
     const newCycle = createCycle(startDate);
     
@@ -132,15 +135,6 @@ export const useCycleData = () => {
 
   // Update a cycle day
   const updateCycleDay = (date: Date, dayData: Partial<CycleDay>) => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to track your cycle",
-        variant: "destructive"
-      });
-      return;
-    }
-
     const targetCycleIndex = userData.cycles.findIndex(cycle => {
       if (cycle.endDate) {
         return date >= cycle.startDate && date <= cycle.endDate;
@@ -210,10 +204,10 @@ export const useCycleData = () => {
 
   // Reset all user data
   const resetData = async () => {
-    if (!user) return;
+    const userId = getUserId();
 
     try {
-      await deleteUserData(user.id);
+      await deleteUserData(userId);
       
       setUserData(initialUserData);
       

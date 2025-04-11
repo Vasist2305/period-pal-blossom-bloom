@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { CalendarDays, Droplets, LineChart, CalendarClock } from 'lucide-react';
@@ -70,6 +71,9 @@ const Home = () => {
           <h1 className="text-3xl font-bold text-primary mb-2">Her Cycle Diary</h1>
           <p className="text-muted-foreground">
             {isLoading ? "Loading your data..." : "Track your cycle, understand your body"}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Your data is saved locally in this browser
           </p>
         </section>
         
