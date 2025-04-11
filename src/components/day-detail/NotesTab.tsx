@@ -3,6 +3,7 @@ import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { useToast } from "@/hooks/use-toast";
 
 interface NotesTabProps {
   notes: string | undefined;
@@ -11,6 +12,16 @@ interface NotesTabProps {
 }
 
 const NotesTab: React.FC<NotesTabProps> = ({ notes, onChange, onSave }) => {
+  const { toast } = useToast();
+  
+  const handleSave = () => {
+    onSave();
+    toast({
+      title: "Notes saved",
+      description: "Your notes have been saved successfully.",
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -23,7 +34,7 @@ const NotesTab: React.FC<NotesTabProps> = ({ notes, onChange, onSave }) => {
           onChange={onChange}
           rows={5}
         />
-        <Button className="mt-4" onClick={onSave}>Save Notes</Button>
+        <Button className="mt-4" onClick={handleSave}>Save Notes</Button>
       </div>
     </div>
   );
