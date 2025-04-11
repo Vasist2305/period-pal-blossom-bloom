@@ -1,9 +1,8 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Drop, ThermometerSun } from 'lucide-react';
+import { Calendar, Droplets, ThermometerSun } from 'lucide-react';
 import { useCycleContext } from '@/contexts/CycleContext';
 import { format, addDays } from 'date-fns';
 
@@ -35,7 +34,7 @@ const Home = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Drop className="w-5 h-5 mr-2 text-primary" />
+              <Droplets className="w-5 h-5 mr-2 text-primary" />
               Period Prediction
             </CardTitle>
             <CardDescription>Your upcoming period</CardDescription>
