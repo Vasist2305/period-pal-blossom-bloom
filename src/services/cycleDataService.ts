@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { Cycle, CycleDay, UserData, DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH } from '@/types';
 import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
+import { PostgrestResponse, PostgrestSingleResponse } from '@supabase/supabase-js';
 
 // Load user cycle data from Supabase
 export const loadUserData = async (userId: string): Promise<UserData> => {
