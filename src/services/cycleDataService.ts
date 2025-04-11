@@ -74,7 +74,7 @@ export const saveUserProfile = async (
   averagePeriodLength: number
 ) => {
   try {
-    await supabase
+    const { error } = await supabase
       .from('profiles')
       .upsert({
         id: userId,
@@ -82,6 +82,10 @@ export const saveUserProfile = async (
         average_period_length: averagePeriodLength,
         updated_at: new Date().toISOString(),
       });
+      
+    if (error) throw error;
+    
+    return { success: true };
   } catch (error) {
     console.error('Error saving user profile:', error);
     throw error;
@@ -91,7 +95,7 @@ export const saveUserProfile = async (
 // Save cycle data to Supabase
 export const saveCycle = async (userId: string, cycle: Cycle) => {
   try {
-    await supabase
+    const { error } = await supabase
       .from('cycles')
       .upsert({
         id: cycle.id,
@@ -100,11 +104,15 @@ export const saveCycle = async (userId: string, cycle: Cycle) => {
         end_date: cycle.endDate ? cycle.endDate.toISOString() : null,
         period_length: cycle.periodLength || null,
       });
+      
+    if (error) throw error;
 
     // Save cycle days
     for (const day of cycle.days) {
       await saveCycleDay(userId, cycle.id, day);
     }
+    
+    return { success: true };
   } catch (error) {
     console.error('Error saving cycle:', error);
     throw error;
@@ -114,7 +122,7 @@ export const saveCycle = async (userId: string, cycle: Cycle) => {
 // Save cycle day data to Supabase
 export const saveCycleDay = async (userId: string, cycleId: string, day: CycleDay) => {
   try {
-    await supabase
+    const { error } = await supabase
       .from('cycle_days')
       .upsert({
         id: `${cycleId}-${format(day.date, 'yyyy-MM-dd')}`,
@@ -127,6 +135,10 @@ export const saveCycleDay = async (userId: string, cycleId: string, day: CycleDa
         mood: day.mood || null,
         notes: day.notes || null,
       });
+      
+    if (error) throw error;
+    
+    return { success: true, date: format(day.date, 'yyyy-MM-dd') };
   } catch (error) {
     console.error('Error saving cycle day:', error);
     throw error;
@@ -136,15 +148,21 @@ export const saveCycleDay = async (userId: string, cycleId: string, day: CycleDa
 // Delete all user data from Supabase
 export const deleteUserData = async (userId: string) => {
   try {
-    await supabase
+    const { error: daysError } = await supabase
       .from('cycle_days')
       .delete()
       .eq('user_id', userId);
+      
+    if (daysError) throw daysError;
     
-    await supabase
+    const { error: cyclesError } = await supabase
       .from('cycles')
       .delete()
       .eq('user_id', userId);
+      
+    if (cyclesError) throw cyclesError;
+    
+    return { success: true };
   } catch (error) {
     console.error('Error deleting user data:', error);
     throw error;
