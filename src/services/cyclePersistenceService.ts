@@ -1,15 +1,15 @@
 
 import { format } from 'date-fns';
-import { Cycle, CycleDay } from '@/types';
+import { Cycle, CycleDay, UserData } from '@/types';
 import { STORAGE_KEYS, saveToLocalStorage, getFromLocalStorage } from '@/utils/storageUtils';
 
 // Save cycle data to localStorage
 export const saveCycle = async (userId: string, cycle: Cycle) => {
   try {
     // Update localStorage with the updated cycle
-    const userData = getFromLocalStorage(STORAGE_KEYS.USER_DATA);
+    const userData = getFromLocalStorage<UserData>(STORAGE_KEYS.USER_DATA);
     if (userData) {
-      const existingCycleIndex = userData.cycles.findIndex((c: any) => c.id === cycle.id);
+      const existingCycleIndex = userData.cycles.findIndex((c) => c.id === cycle.id);
       
       if (existingCycleIndex >= 0) {
         userData.cycles[existingCycleIndex] = cycle;
@@ -31,13 +31,13 @@ export const saveCycle = async (userId: string, cycle: Cycle) => {
 export const saveCycleDay = async (userId: string, cycleId: string, day: CycleDay) => {
   try {
     // Update the day in localStorage
-    const userData = getFromLocalStorage(STORAGE_KEYS.USER_DATA);
+    const userData = getFromLocalStorage<UserData>(STORAGE_KEYS.USER_DATA);
     if (userData) {
-      const cycleIndex = userData.cycles.findIndex((c: any) => c.id === cycleId);
+      const cycleIndex = userData.cycles.findIndex((c) => c.id === cycleId);
       
       if (cycleIndex >= 0) {
         const dayIndex = userData.cycles[cycleIndex].days.findIndex(
-          (d: any) => new Date(d.date).toDateString() === day.date.toDateString()
+          (d) => new Date(d.date).toDateString() === day.date.toDateString()
         );
         
         if (dayIndex >= 0) {
