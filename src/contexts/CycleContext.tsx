@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext } from 'react';
 import { Cycle, CycleDay, UserData } from '@/types';
-import { useCycleData } from '@/hooks/useCycleData';
+import { useCycleData as useDataHook } from '@/hooks/useCycleData';
 
 interface CycleContextType {
   userData: UserData;
@@ -31,7 +31,7 @@ interface CycleProviderProps {
 }
 
 export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
-  const cycleData = useCycleData();
+  const cycleData = useDataHook();
   
   return (
     <CycleContext.Provider value={cycleData}>
@@ -41,6 +41,4 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
 };
 
 // Export the consumer hook for easy access
-export const useCycleData = () => {
-  return useCycleContext();
-};
+export const useCycleData = useCycleContext;
