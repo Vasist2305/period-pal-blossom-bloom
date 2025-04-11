@@ -3,7 +3,9 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Cycle, CycleDay, UserData, DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH } from '@/types';
 import { addDays, subDays, differenceInDays, isSameDay, format } from 'date-fns';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 
 interface CycleContextType {
   userData: UserData;
@@ -32,8 +34,6 @@ interface CycleProviderProps {
   children: React.ReactNode;
 }
 
-const STORAGE_KEY = 'blossom_user_data';
-
 const initialUserData: UserData = {
   cycles: [],
   averageCycleLength: DEFAULT_CYCLE_LENGTH,
@@ -45,38 +45,135 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
   const [userData, setUserData] = useState<UserData>(initialUserData);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  // Load data from localStorage
+  // Load data from Supabase when user changes
   useEffect(() => {
-    try {
-      const savedData = localStorage.getItem(STORAGE_KEY);
-      if (savedData) {
-        const parsedData = JSON.parse(savedData, (key, value) => {
-          // Convert string dates back to Date objects
-          if (key === 'date' || key === 'startDate' || key === 'endDate' || key === 'lastUpdated') {
-            return value ? new Date(value) : null;
-          }
-          return value;
-        });
-        setUserData(parsedData);
-      }
-    } catch (error) {
-      console.error('Error loading user data:', error);
-      toast({
-        title: "Error loading data",
-        description: "There was a problem loading your data",
-        variant: "destructive"
-      });
-    } finally {
+    if (!user) {
+      setUserData(initialUserData);
       setIsLoading(false);
+      return;
     }
-  }, [toast]);
 
-  // Save data to localStorage whenever it changes
-  useEffect(() => {
-    if (!isLoading) {
+    const fetchUserData = async () => {
+      setIsLoading(true);
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+        // Fetch user profile data
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError) throw profileError;
+
+        // Fetch cycles
+        const { data: cyclesData, error: cyclesError } = await supabase
+          .from('cycles')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('start_date', { ascending: false });
+
+        if (cyclesError) throw cyclesError;
+
+        // Fetch cycle days
+        const { data: daysData, error: daysError } = await supabase
+          .from('cycle_days')
+          .select('*')
+          .eq('user_id', user.id);
+
+        if (daysError) throw daysError;
+
+        // Map data to our format
+        const cycles = cyclesData.map((cycle) => {
+          const cycleDays = daysData
+            .filter((day) => day.cycle_id === cycle.id)
+            .map((day) => ({
+              date: new Date(day.date),
+              menstruation: day.menstruation,
+              flow: day.flow,
+              symptoms: day.symptoms || [],
+              mood: day.mood,
+              notes: day.notes,
+            }));
+
+          return {
+            id: cycle.id,
+            startDate: new Date(cycle.start_date),
+            endDate: cycle.end_date ? new Date(cycle.end_date) : undefined,
+            periodLength: cycle.period_length,
+            days: cycleDays,
+          };
+        });
+
+        setUserData({
+          cycles,
+          averageCycleLength: profileData?.average_cycle_length || DEFAULT_CYCLE_LENGTH,
+          averagePeriodLength: profileData?.average_period_length || DEFAULT_PERIOD_LENGTH,
+          lastUpdated: new Date(),
+        });
+      } catch (error) {
+        console.error('Error loading user data:', error);
+        toast({
+          title: "Error loading data",
+          description: "There was a problem loading your data",
+          variant: "destructive"
+        });
+        setUserData(initialUserData);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [user, toast]);
+
+  // Save data to Supabase whenever it changes
+  useEffect(() => {
+    if (!user || isLoading) return;
+
+    const saveUserData = async () => {
+      try {
+        // Update user profile
+        await supabase
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            average_cycle_length: userData.averageCycleLength,
+            average_period_length: userData.averagePeriodLength,
+            updated_at: new Date().toISOString(),
+          });
+
+        // For each cycle, update or insert
+        for (const cycle of userData.cycles) {
+          // Save cycle
+          await supabase
+            .from('cycles')
+            .upsert({
+              id: cycle.id,
+              user_id: user.id,
+              start_date: cycle.startDate.toISOString(),
+              end_date: cycle.endDate ? cycle.endDate.toISOString() : null,
+              period_length: cycle.periodLength || null,
+            });
+
+          // Save cycle days
+          for (const day of cycle.days) {
+            await supabase
+              .from('cycle_days')
+              .upsert({
+                id: `${cycle.id}-${format(day.date, 'yyyy-MM-dd')}`,
+                user_id: user.id,
+                cycle_id: cycle.id,
+                date: format(day.date, 'yyyy-MM-dd'),
+                menstruation: day.menstruation || false,
+                flow: day.flow || null,
+                symptoms: day.symptoms || [],
+                mood: day.mood || null,
+                notes: day.notes || null,
+              });
+          }
+        }
       } catch (error) {
         console.error('Error saving user data:', error);
         toast({
@@ -85,8 +182,10 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
           variant: "destructive"
         });
       }
-    }
-  }, [userData, isLoading, toast]);
+    };
+
+    saveUserData();
+  }, [userData, isLoading, user, toast]);
 
   // Calculate and return the current cycle
   const currentCycle = userData.cycles.length > 0 
@@ -96,9 +195,19 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
     : null;
 
   // Add a new cycle
-  const addCycle = (startDate: Date) => {
+  const addCycle = async (startDate: Date) => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to track your cycle",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const cycleId = uuidv4();
     const newCycle: Cycle = {
-      id: uuidv4(),
+      id: cycleId,
       startDate,
       days: [{
         date: startDate,
@@ -158,6 +267,15 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
 
   // Update a specific cycle day
   const updateCycleDay = (date: Date, dayData: Partial<CycleDay>) => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to track your cycle",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Check if the date falls within any existing cycle
     const targetCycleIndex = userData.cycles.findIndex(cycle => {
       // If cycle has an end date, check if date is within range
@@ -323,12 +441,36 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
   };
 
   // Reset all data
-  const resetData = () => {
-    setUserData(initialUserData);
-    toast({
-      title: "Data reset",
-      description: "All your cycle data has been reset",
-    });
+  const resetData = async () => {
+    if (!user) return;
+
+    try {
+      // Delete all user data from Supabase
+      await supabase
+        .from('cycle_days')
+        .delete()
+        .eq('user_id', user.id);
+      
+      await supabase
+        .from('cycles')
+        .delete()
+        .eq('user_id', user.id);
+      
+      // Reset local state
+      setUserData(initialUserData);
+      
+      toast({
+        title: "Data reset",
+        description: "All your cycle data has been reset",
+      });
+    } catch (error) {
+      console.error('Error resetting data:', error);
+      toast({
+        title: "Error",
+        description: "There was a problem resetting your data",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

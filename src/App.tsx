@@ -18,18 +18,6 @@ import ProtectedRoute from "./components/ProtectedRoute";
 const queryClient = new QueryClient();
 
 const App = () => {
-  // Check if user is logged in
-  const isLoggedIn = () => {
-    const currentUser = localStorage.getItem("currentUser");
-    if (!currentUser) return false;
-    
-    try {
-      return JSON.parse(currentUser).isLoggedIn === true;
-    } catch (error) {
-      return false;
-    }
-  };
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -70,9 +58,7 @@ const App = () => {
               } />
               
               {/* Redirect to login if not found */}
-              <Route path="*" element={
-                isLoggedIn() ? <NotFound /> : <Navigate to="/login" />
-              } />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </CycleProvider>
