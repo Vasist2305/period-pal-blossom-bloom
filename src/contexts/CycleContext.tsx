@@ -1,11 +1,23 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { Cycle, CycleDay, UserData, DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH } from '@/types';
-import { addDays, subDays, differenceInDays, isSameDay, format } from 'date-fns';
+import { isSameDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { 
+  calculateOvulationDay, 
+  calculatePredictedPeriodDays, 
+  calculateFertileWindowDays,
+  findCycleDay,
+  calculateAverages
+} from '@/utils/cycleCalculations';
+import {
+  loadUserData,
+  saveUserProfile,
+  saveCycle,
+  deleteUserData,
+  createCycle
+} from '@/services/cycleDataService';
 
 interface CycleContextType {
   userData: UserData;
@@ -55,63 +67,11 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
       return;
     }
 
-    const fetchUserData = async () => {
+    const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Fetch user profile data
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (profileError) throw profileError;
-
-        // Fetch cycles
-        const { data: cyclesData, error: cyclesError } = await supabase
-          .from('cycles')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('start_date', { ascending: false });
-
-        if (cyclesError) throw cyclesError;
-
-        // Fetch cycle days
-        const { data: daysData, error: daysError } = await supabase
-          .from('cycle_days')
-          .select('*')
-          .eq('user_id', user.id);
-
-        if (daysError) throw daysError;
-
-        // Map data to our format
-        const cycles = cyclesData.map((cycle) => {
-          const cycleDays = daysData
-            .filter((day) => day.cycle_id === cycle.id)
-            .map((day) => ({
-              date: new Date(day.date),
-              menstruation: day.menstruation,
-              flow: day.flow,
-              symptoms: day.symptoms || [],
-              mood: day.mood,
-              notes: day.notes,
-            }));
-
-          return {
-            id: cycle.id,
-            startDate: new Date(cycle.start_date),
-            endDate: cycle.end_date ? new Date(cycle.end_date) : undefined,
-            periodLength: cycle.period_length,
-            days: cycleDays,
-          };
-        });
-
-        setUserData({
-          cycles,
-          averageCycleLength: profileData?.average_cycle_length || DEFAULT_CYCLE_LENGTH,
-          averagePeriodLength: profileData?.average_period_length || DEFAULT_PERIOD_LENGTH,
-          lastUpdated: new Date(),
-        });
+        const data = await loadUserData(user.id);
+        setUserData(data);
       } catch (error) {
         console.error('Error loading user data:', error);
         toast({
@@ -125,54 +85,25 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
       }
     };
 
-    fetchUserData();
+    fetchData();
   }, [user, toast]);
 
   // Save data to Supabase whenever it changes
   useEffect(() => {
     if (!user || isLoading) return;
 
-    const saveUserData = async () => {
+    const saveData = async () => {
       try {
         // Update user profile
-        await supabase
-          .from('profiles')
-          .upsert({
-            id: user.id,
-            average_cycle_length: userData.averageCycleLength,
-            average_period_length: userData.averagePeriodLength,
-            updated_at: new Date().toISOString(),
-          });
+        await saveUserProfile(
+          user.id, 
+          userData.averageCycleLength, 
+          userData.averagePeriodLength
+        );
 
         // For each cycle, update or insert
         for (const cycle of userData.cycles) {
-          // Save cycle
-          await supabase
-            .from('cycles')
-            .upsert({
-              id: cycle.id,
-              user_id: user.id,
-              start_date: cycle.startDate.toISOString(),
-              end_date: cycle.endDate ? cycle.endDate.toISOString() : null,
-              period_length: cycle.periodLength || null,
-            });
-
-          // Save cycle days
-          for (const day of cycle.days) {
-            await supabase
-              .from('cycle_days')
-              .upsert({
-                id: `${cycle.id}-${format(day.date, 'yyyy-MM-dd')}`,
-                user_id: user.id,
-                cycle_id: cycle.id,
-                date: format(day.date, 'yyyy-MM-dd'),
-                menstruation: day.menstruation || false,
-                flow: day.flow || null,
-                symptoms: day.symptoms || [],
-                mood: day.mood || null,
-                notes: day.notes || null,
-              });
-          }
+          await saveCycle(user.id, cycle);
         }
       } catch (error) {
         console.error('Error saving user data:', error);
@@ -184,7 +115,7 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
       }
     };
 
-    saveUserData();
+    saveData();
   }, [userData, isLoading, user, toast]);
 
   // Calculate and return the current cycle
@@ -205,51 +136,11 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
       return;
     }
 
-    const cycleId = uuidv4();
-    const newCycle: Cycle = {
-      id: cycleId,
-      startDate,
-      days: [{
-        date: startDate,
-        menstruation: true,
-        flow: 'medium'
-      }],
-    };
-
+    const newCycle = createCycle(startDate);
+    
     // Calculate average cycle length from previous cycles
     const updatedCycles = [...userData.cycles, newCycle];
-    let averageCycleLength = DEFAULT_CYCLE_LENGTH;
-    let averagePeriodLength = DEFAULT_PERIOD_LENGTH;
-    
-    if (updatedCycles.length > 1) {
-      // Calculate average cycle length
-      const cycleLengths = [];
-      for (let i = 1; i < updatedCycles.length; i++) {
-        const current = updatedCycles[i];
-        const previous = updatedCycles[i - 1];
-        const length = differenceInDays(current.startDate, previous.startDate);
-        if (length > 0 && length < 100) { // Filter out anomalies
-          cycleLengths.push(length);
-        }
-      }
-      
-      if (cycleLengths.length > 0) {
-        averageCycleLength = Math.round(
-          cycleLengths.reduce((sum, length) => sum + length, 0) / cycleLengths.length
-        );
-      }
-      
-      // Calculate average period length
-      const periodLengths = updatedCycles
-        .filter(cycle => cycle.periodLength && cycle.periodLength > 0 && cycle.periodLength < 15)
-        .map(cycle => cycle.periodLength as number);
-        
-      if (periodLengths.length > 0) {
-        averagePeriodLength = Math.round(
-          periodLengths.reduce((sum, length) => sum + length, 0) / periodLengths.length
-        );
-      }
-    }
+    const { averageCycleLength, averagePeriodLength } = calculateAverages(updatedCycles);
 
     setUserData(prev => ({
       ...prev,
@@ -261,7 +152,7 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
 
     toast({
       title: "Cycle added",
-      description: `New cycle starting ${format(startDate, 'MMM dd, yyyy')} has been added`,
+      description: `New cycle starting ${startDate.toLocaleDateString()} has been added`,
     });
   };
 
@@ -356,88 +247,33 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
 
   // Get a specific cycle day
   const getCycleDay = (date: Date): CycleDay | null => {
-    for (const cycle of userData.cycles) {
-      const found = cycle.days.find(day => isSameDay(new Date(day.date), date));
-      if (found) return found;
-    }
-    return null;
+    return findCycleDay(date, userData.cycles);
   };
 
-  // Get predicted period days based on average cycle length
+  // Get predicted period days
   const getPredictedPeriodDays = (startDate: Date, endDate: Date): Date[] => {
-    // Only show predictions if we have at least one cycle
-    if (userData.cycles.length === 0) {
-      return [];
-    }
-
-    const predictedDays: Date[] = [];
-    let lastCycleStart: Date;
-    
-    // Get the start date of the most recent cycle
-    if (userData.cycles.length > 0) {
-      lastCycleStart = new Date(userData.cycles[0].startDate);
-      
-      // Predict future periods based on average cycle length
-      let currentPrediction = lastCycleStart;
-      
-      while (currentPrediction <= endDate) {
-        // If this prediction is after our start date, add the period days
-        if (currentPrediction >= startDate) {
-          // Add the predicted period days
-          for (let i = 0; i < userData.averagePeriodLength; i++) {
-            const periodDay = addDays(currentPrediction, i);
-            if (periodDay <= endDate) {
-              predictedDays.push(periodDay);
-            }
-          }
-        }
-        
-        // Move to the next predicted cycle
-        currentPrediction = addDays(currentPrediction, userData.averageCycleLength);
-      }
-    }
-    
-    return predictedDays;
+    return calculatePredictedPeriodDays(
+      startDate, 
+      endDate, 
+      userData.cycles, 
+      userData.averageCycleLength,
+      userData.averagePeriodLength
+    );
   };
 
-  // Get fertile window days (typically 5 days before ovulation plus ovulation day)
+  // Get fertile window days
   const getFertileWindowDays = (startDate: Date, endDate: Date): Date[] => {
-    if (userData.cycles.length === 0) {
-      return [];
-    }
-
-    const fertileDays: Date[] = [];
-    const lastCycleStart = new Date(userData.cycles[0].startDate);
-    let currentCycleStart = lastCycleStart;
-    
-    // For each potential cycle in our range
-    while (currentCycleStart <= endDate) {
-      const ovulationDay = getOvulationDay(currentCycleStart);
-      
-      if (ovulationDay) {
-        // Fertile window: 5 days before ovulation + ovulation day
-        for (let i = -5; i <= 0; i++) {
-          const fertileDay = addDays(ovulationDay, i);
-          if (fertileDay >= startDate && fertileDay <= endDate) {
-            fertileDays.push(fertileDay);
-          }
-        }
-      }
-      
-      // Move to next predicted cycle
-      currentCycleStart = addDays(currentCycleStart, userData.averageCycleLength);
-    }
-    
-    return fertileDays;
+    return calculateFertileWindowDays(
+      startDate, 
+      endDate, 
+      userData.cycles,
+      userData.averageCycleLength
+    );
   };
 
-  // Get ovulation day (typically 14 days before the next period)
+  // Get ovulation day
   const getOvulationDay = (cycleStartDate: Date): Date | null => {
-    if (!cycleStartDate) return null;
-    
-    // Ovulation typically occurs 14 days before the next period
-    const daysUntilNextPeriod = userData.averageCycleLength - 14;
-    return addDays(cycleStartDate, daysUntilNextPeriod);
+    return calculateOvulationDay(cycleStartDate, userData.averageCycleLength);
   };
 
   // Reset all data
@@ -445,16 +281,7 @@ export const CycleProvider: React.FC<CycleProviderProps> = ({ children }) => {
     if (!user) return;
 
     try {
-      // Delete all user data from Supabase
-      await supabase
-        .from('cycle_days')
-        .delete()
-        .eq('user_id', user.id);
-      
-      await supabase
-        .from('cycles')
-        .delete()
-        .eq('user_id', user.id);
+      await deleteUserData(user.id);
       
       // Reset local state
       setUserData(initialUserData);
