@@ -39,16 +39,21 @@ function createMockClient() {
     },
     from: () => ({
       select: () => ({
-        eq: () => ({
+        eq: (column: string, value: any) => ({
           single: () => Promise.resolve({ data: null, error: null }),
-          order: () => Promise.resolve({ data: [], error: null }),
+          order: (column: string, options: any) => ({
+            eq: (column: string, value: any) => Promise.resolve({ data: [], error: null }),
+          }),
         }),
-        eq: () => Promise.resolve({ data: [], error: null }),
-        order: () => Promise.resolve({ data: [], error: null }),
+        order: (column: string, options: any) => ({
+          eq: (column: string, value: any) => Promise.resolve({ data: [], error: null }),
+        }),
       }),
       insert: () => Promise.resolve({ data: null, error: null }),
       upsert: () => Promise.resolve({ data: null, error: null }),
-      delete: () => Promise.resolve({ data: null, error: null }),
+      delete: () => ({
+        eq: (column: string, value: any) => Promise.resolve({ data: null, error: null }),
+      }),
     })
   };
 }

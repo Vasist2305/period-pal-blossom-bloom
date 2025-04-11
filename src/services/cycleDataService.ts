@@ -8,30 +8,34 @@ import { v4 as uuidv4 } from 'uuid';
 export const loadUserData = async (userId: string): Promise<UserData> => {
   try {
     // Fetch user profile data
-    const { data: profileData, error: profileError } = await supabase
+    const profileResponse = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (profileError) throw profileError;
+      .eq('id', userId);
+      
+    if (profileResponse.error) throw profileResponse.error;
+    const profileData = profileResponse.data?.[0] || null;
 
     // Fetch cycles
-    const { data: cyclesData, error: cyclesError } = await supabase
+    const cyclesResponse = await supabase
       .from('cycles')
       .select('*')
-      .eq('user_id', userId)
-      .order('start_date', { ascending: false });
-
-    if (cyclesError) throw cyclesError;
+      .eq('user_id', userId);
+      
+    if (cyclesResponse.error) throw cyclesResponse.error;
+    const cyclesData = cyclesResponse.data || [];
+    
+    // Sort cycles by start_date in descending order
+    cyclesData.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
 
     // Fetch cycle days
-    const { data: daysData, error: daysError } = await supabase
+    const daysResponse = await supabase
       .from('cycle_days')
       .select('*')
       .eq('user_id', userId);
 
-    if (daysError) throw daysError;
+    if (daysResponse.error) throw daysResponse.error;
+    const daysData = daysResponse.data || [];
 
     // Map data to our format
     const cycles = cyclesData.map((cycle) => {
@@ -148,19 +152,19 @@ export const saveCycleDay = async (userId: string, cycleId: string, day: CycleDa
 // Delete all user data from Supabase
 export const deleteUserData = async (userId: string) => {
   try {
-    const { error: daysError } = await supabase
+    const daysResponse = await supabase
       .from('cycle_days')
       .delete()
       .eq('user_id', userId);
       
-    if (daysError) throw daysError;
+    if (daysResponse.error) throw daysResponse.error;
     
-    const { error: cyclesError } = await supabase
+    const cyclesResponse = await supabase
       .from('cycles')
       .delete()
       .eq('user_id', userId);
       
-    if (cyclesError) throw cyclesError;
+    if (cyclesResponse.error) throw cyclesResponse.error;
     
     return { success: true };
   } catch (error) {
