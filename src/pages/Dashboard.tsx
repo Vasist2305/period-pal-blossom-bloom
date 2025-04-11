@@ -7,14 +7,16 @@ import {
   Settings, 
   Home, 
   User, 
-  LogOut,
+  LogOut
+} from "lucide-react";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger
-} from "lucide-react";
+} from "@/components/ui/dropdown-menu";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
