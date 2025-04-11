@@ -1,6 +1,5 @@
 
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import { User, Settings, LogOut } from "lucide-react";
 import {
   DropdownMenu,
@@ -12,51 +11,32 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const HeaderDropdown = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [user, setUser] = React.useState<{ name: string; email: string; isLoggedIn: boolean } | null>(null);
+  const { user, signOut } = useAuth();
 
-  React.useEffect(() => {
-    // Check for user in localStorage
-    const currentUser = localStorage.getItem("currentUser");
-    if (currentUser) {
-      try {
-        setUser(JSON.parse(currentUser));
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-      }
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Logout failed",
+        description: error.message || "An error occurred during logout",
+        variant: "destructive"
+      });
     }
-  }, []);
-
-  const handleLogout = () => {
-    if (user) {
-      // Get all users
-      const users = JSON.parse(localStorage.getItem("users") || "[]");
-      
-      // Update the current user's login status
-      const updatedUsers = users.map((u: any) => 
-        u.email === user.email ? { ...u, isLoggedIn: false } : u
-      );
-      
-      // Save updated users array
-      localStorage.setItem("users", JSON.stringify(updatedUsers));
-      
-      // Update current user
-      const updatedUser = { ...user, isLoggedIn: false };
-      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
-    }
-    
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out"
-    });
-    
-    navigate("/login");
   };
 
-  if (!user || !user.isLoggedIn) {
+  if (!user) {
     return (
       <div className="flex gap-2">
         <Button variant="outline" size="sm" onClick={() => navigate("/login")}>Log in</Button>
@@ -67,7 +47,7 @@ const HeaderDropdown = () => {
 
   return (
     <div className="flex items-center gap-4">
-      <span className="text-sm hidden md:inline">Welcome, {user.name}</span>
+      <span className="text-sm hidden md:inline">Welcome, {user.user_metadata?.name || 'User'}</span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="rounded-full" aria-label="User menu">

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -22,6 +23,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { signIn } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -31,49 +33,22 @@ const Login = () => {
     }
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     
-    // Get all users from localStorage
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
-    
-    // Find the user with matching email
-    const user = users.find((u: any) => u.email === values.email);
-    
-    if (user) {
-      // Check if password matches
-      if (user.password === values.password) {
-        // Update login status
-        user.isLoggedIn = true;
-        
-        // Update the user in the users array
-        const updatedUsers = users.map((u: any) => 
-          u.email === user.email ? user : u
-        );
-        
-        // Save the updated users array
-        localStorage.setItem("users", JSON.stringify(updatedUsers));
-        
-        // Also store the current user separately for easy access
-        localStorage.setItem("currentUser", JSON.stringify(user));
-        
-        toast({
-          title: "Login successful",
-          description: `Welcome back, ${user.name}!`
-        });
-        
-        navigate("/dashboard");
-      } else {
-        toast({
-          title: "Login failed",
-          description: "Invalid password",
-          variant: "destructive"
-        });
-      }
-    } else {
+    try {
+      const { user } = await signIn(values.email, values.password);
+      
       toast({
-        title: "Account not found",
-        description: "No account found with this email",
+        title: "Login successful",
+        description: `Welcome back!`
+      });
+      
+      navigate("/dashboard");
+    } catch (error: any) {
+      toast({
+        title: "Login failed",
+        description: error.message || "An error occurred during login",
         variant: "destructive"
       });
     }

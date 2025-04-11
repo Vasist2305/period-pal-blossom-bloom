@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
@@ -28,6 +29,7 @@ const Register = () => {
   const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { signUp } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -39,54 +41,27 @@ const Register = () => {
     }
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     
-    // Get existing users from localStorage
-    const existingUsers = JSON.parse(localStorage.getItem("users") || "[]");
-    
-    // Check if user with this email already exists
-    const userExists = existingUsers.some((user: any) => user.email === values.email);
-    
-    if (userExists) {
+    try {
+      const { user } = await signUp(values.email, values.password, values.name);
+      
+      toast({
+        title: "Registration successful",
+        description: "Welcome to Her Cycle Diary!"
+      });
+      
+      navigate("/dashboard");
+    } catch (error: any) {
       toast({
         title: "Registration failed",
-        description: "An account with this email already exists",
+        description: error.message || "An error occurred during registration",
         variant: "destructive"
       });
-      setIsLoading(false);
-      return;
     }
     
-    // Create new user object
-    const newUser = {
-      id: Date.now().toString(),
-      name: values.name,
-      email: values.email,
-      password: values.password, // In a real app, this would be hashed
-      isLoggedIn: true,
-      createdAt: new Date().toISOString()
-    };
-    
-    // Add new user to the array of users
-    const updatedUsers = [...existingUsers, newUser];
-    
-    // Save updated users array to localStorage
-    localStorage.setItem("users", JSON.stringify(updatedUsers));
-    
-    // Also store the current user separately for easy access
-    localStorage.setItem("currentUser", JSON.stringify(newUser));
-    
-    toast({
-      title: "Registration successful",
-      description: "Welcome to Her Cycle Diary!"
-    });
-    
-    // Navigate to dashboard after successful registration
-    setTimeout(() => {
-      navigate("/dashboard");
-      setIsLoading(false);
-    }, 500);
+    setIsLoading(false);
   };
 
   return (
